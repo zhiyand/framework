@@ -92,6 +92,13 @@ class Factory implements FactoryContract
     protected $sectionStack = [];
 
     /**
+     * The view fragment cache.
+     *
+     * @var \Illuminate\View\ViewCache;
+     */
+    protected $cache;
+
+    /**
      * The number of active rendering operations.
      *
      * @var int
@@ -505,6 +512,22 @@ class Factory implements FactoryContract
     public function callCreator(View $view)
     {
         $this->events->fire('creating: '.$view->getName(), [$view]);
+    }
+
+    public function startFragment($model, $view, $serial)
+    {
+        $this->cache->setFragment($model, $view, $serial);
+
+        if ($this->cache->expired()) {
+            $this->cache->start();
+        }
+    }
+
+    public function stopFragment()
+    {
+        $this->cache->stop();
+
+        echo $this->cache->getContent();
     }
 
     /**
