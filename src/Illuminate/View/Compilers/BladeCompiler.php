@@ -85,6 +85,17 @@ class BladeCompiler extends Compiler implements CompilerInterface
     protected $forelseCounter = 0;
 
     /**
+     * Counter to keep track of cached fragments.
+     * @var int
+     */
+    protected $fragmentCounter = 0;
+
+    /**
+     * @var \Illuminate\View\FragmentCache
+     */
+    protected $fragmentCache;
+
+    /**
      * Compile the view at the given path.
      *
      * @param  string  $path
@@ -125,6 +136,26 @@ class BladeCompiler extends Compiler implements CompilerInterface
     }
 
     /**
+     * Get the fragment cache object.
+     *
+     * @return \Illuminate\View\FragmentCache
+     */
+    public function getFragmentCache()
+    {
+        return $this->fragmentCache;
+    }
+
+    /**
+     * Set the fragment cache object.
+     *
+     * @param \Illuminate\View\FragmentCache $cache
+     */
+    public function setFragmentCache($cache)
+    {
+        $this->fragmentCache = $cache;
+    }
+
+    /**
      * Compile the given Blade template contents.
      *
      * @param  string  $value
@@ -135,6 +166,7 @@ class BladeCompiler extends Compiler implements CompilerInterface
         $result = '';
 
         $this->footer = [];
+        $this->fragmentCounter = 0;
 
         // Here we will loop through all of the tokens returned by the Zend lexer and
         // parse each one into the corresponding valid PHP. We will then have this
@@ -348,6 +380,21 @@ class BladeCompiler extends Compiler implements CompilerInterface
         return preg_replace('/^(?=\$)(.+?)(?:\s+or\s+)(.+?)$/s', 'isset($1) ? $1 : $2', $value);
     }
 
+    protected function compileCache($expression)
+    {
+        return "<?php \$__env->startFragment($expression, __FILE__, $this->fragmentCounter); ?>";
+    }
+
+    protected function compileEndCache($expression)
+    {
+        if($this->fragmentCache){
+            $this->fragmentCache->saveDependency();
+        }
+        $this->fragmentCounter += 1;
+
+        return "<?php \$__env->stopFragment(); ?>";
+    }
+
     /**
      * Compile the each statements into valid PHP.
      *
@@ -356,7 +403,23 @@ class BladeCompiler extends Compiler implements CompilerInterface
      */
     protected function compileEach($expression)
     {
+        if($this->fragmentCache){
+            $args = $this->parseArguments($expression);
+
+            $this->fragmentCache->addDependency(
+                $this->getCompiledPath($this->path),
+                $this->fragmentCounter,
+                $args[0]);
+        }
+
         return "<?php echo \$__env->renderEach{$expression}; ?>";
+    }
+
+    protected function parseArguments($expression)
+    {
+        $args = explode(',', preg_replace("/[\(\)\\\"\']/", '', $expression));
+
+        return array_map('trim', $args);
     }
 
     /**
@@ -711,6 +774,15 @@ class BladeCompiler extends Compiler implements CompilerInterface
      */
     protected function compileInclude($expression)
     {
+        if($this->fragmentCache){
+            $args = $this->parseArguments($expression);
+
+            $this->fragmentCache->addDependency(
+                $this->getCompiledPath($this->path),
+                $this->fragmentCounter,
+                $args[0]);
+        }
+
         if (Str::startsWith($expression, '(')) {
             $expression = substr($expression, 1, -1);
         }

@@ -94,7 +94,7 @@ class Factory implements FactoryContract
     /**
      * The view fragment cache.
      *
-     * @var \Illuminate\View\ViewCache;
+     * @var \Illuminate\View\FragmentCache;
      */
     protected $cache;
 

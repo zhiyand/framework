@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\View\FragmentCache;
 use Mockery as m;
 use Illuminate\View\Compilers\BladeCompiler;
 
@@ -605,5 +606,33 @@ test';
             ['((', '))'],
             ['(((', ')))'],
         ];
+    }
+
+    public function testRegisterViewDependencies()
+    {
+        $compiler = new BladeCompiler($this->getFiles(), __DIR__);
+
+        $cache = m::mock(FragmentCache::class);
+
+        $compiler->setFragmentCache($cache);
+        $compiler->setPath('foo');
+
+        $string = '@cache($post)
+    @each("bar", $comments, "comment")
+    @include("zoo", ["comments" => $comments])
+@endcache
+
+@cache($user)
+    @include("user", ["user" => $user])
+@endcache
+        ';
+
+        $cache->shouldReceive('addDependency')->once()->with($compiler->getCompiledPath('foo'), 0, 'bar');
+        $cache->shouldReceive('addDependency')->once()->with($compiler->getCompiledPath('foo'), 0, 'zoo');
+        $cache->shouldReceive('addDependency')->once()->with($compiler->getCompiledPath('foo'), 1, 'user');
+
+        $cache->shouldReceive('saveDependency')->twice();
+
+        $compiler->compileString($string);
     }
 }

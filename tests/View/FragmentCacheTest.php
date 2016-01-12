@@ -1,9 +1,9 @@
 <?php
 
 use Mockery as m;
-use Illuminate\View\ViewCache;
+use Illuminate\View\FragmentCache;
 
-class ViewCacheTest extends PHPUnit_Framework_TestCase
+class FragmentCacheTest extends PHPUnit_Framework_TestCase
 {
     public function tearDown()
     {
@@ -17,7 +17,7 @@ class ViewCacheTest extends PHPUnit_Framework_TestCase
         $files->shouldReceive('exists')->once()->with('tree.json')->andReturn(true);
         $files->shouldReceive('get')->once()->with('tree.json')->andReturn('{"foo":["bar","baz"]}');
 
-        $cache = new ViewCache($store, $files, 'tree.json');
+        $cache = new FragmentCache($store, $files, 'tree.json');
 
         $this->assertEquals(['foo' => ['bar', 'baz']], $cache->getTree());
     }
@@ -30,7 +30,7 @@ class ViewCacheTest extends PHPUnit_Framework_TestCase
         list($store, $files) = $this->getViewCacheArgs();
 
         $files->shouldReceive('exists')->once()->with('tree.json')->andReturn(false);
-        $cache = new ViewCache($store, $files, 'tree.json');
+        $cache = new FragmentCache($store, $files, 'tree.json');
     }
 
     public function test_it_generates_fragment_id_based_on_model_view_serial()
@@ -41,7 +41,7 @@ class ViewCacheTest extends PHPUnit_Framework_TestCase
         $files->shouldReceive('exists')->once()->with('tree.json')->andReturn(true);
         $files->shouldReceive('get')->once()->with('tree.json')->andReturn('{"view1":[["foo"],["bar"]]}');
         $files->shouldReceive('lastModified')->andReturn(100);
-        $cache = new ViewCache($store, $files, 'tree.json');
+        $cache = new FragmentCache($store, $files, 'tree.json');
 
         $model = m::mock('stdClass');
         $model->shouldReceive('cacheKey')->andReturn('key');
@@ -91,6 +91,30 @@ class ViewCacheTest extends PHPUnit_Framework_TestCase
         $this->assertEquals('awesome', $cache->getContent());
     }
 
+    public function test_it_can_update_view_dependencies()
+    {
+        $cache = $this->getViewCache();
+
+        $cache->addDependency('foo', 0, 'zigzag');
+
+        $this->assertEquals(['foo' => [['bar', 'zigzag'], ['baz']]], $cache->getTree());
+
+        $cache->addDependency('bear', 0, 'nah');
+
+        $this->assertEquals(['foo' => [['bar', 'zigzag'], ['baz']],
+            'bear' => [['nah']]
+            ], $cache->getTree());
+    }
+
+    public function test_it_can_save_updated_dependencies()
+    {
+        $cache = $this->getViewCache();
+
+        $cache->addDependency('foo', 0, 'zigzag');
+        $cache->getFiles()->shouldReceive('put')->once();
+        $cache->saveDependency();
+    }
+
     protected function getViewCache()
     {
         list($store, $files) = $this->getViewCacheArgs();
@@ -99,7 +123,7 @@ class ViewCacheTest extends PHPUnit_Framework_TestCase
         $files->shouldReceive('get')->once()->with('tree.json')->andReturn('{"foo":[["bar"],["baz"]]}');
         $files->shouldReceive('lastModified')->andReturn(100);
 
-        return new ViewCache($store, $files, 'tree.json');
+        return new FragmentCache($store, $files, 'tree.json');
     }
 
     protected function getViewCacheArgs()
