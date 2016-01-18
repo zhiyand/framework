@@ -380,15 +380,11 @@ class BladeCompiler extends Compiler implements CompilerInterface
         return preg_replace('/^(?=\$)(.+?)(?:\s+or\s+)(.+?)$/s', 'isset($1) ? $1 : $2', $value);
     }
 
-    public function addDependency($dependency, $view, $serial)
-    {
-        $this->fragmentCache->addDependency($view, $serial, $dependency);
-    }
-
     protected function compileDepends($expression)
     {
         $args = $this->parseArguments($expression);
-        $this->addDependency($args[0], $this->getCompiledPath($this->path), $this->fragmentCounter);
+
+        $this->fragmentCache->addDependency($this->getCompiledPath($this->path), $this->fragmentCounter, $args[0]);
     }
 
     protected function compileCache($expression)
