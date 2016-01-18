@@ -105,7 +105,7 @@ class ViewServiceProvider extends ServiceProvider
     public function registerFragmentCache()
     {
         $this->app->bind('view.fragment.cache', function($app) {
-            return new FragmentCache($app['cache']->getStore(), $app['files'], $app['config']['view.dependencies']);
+            return new FragmentCache($app['cache']->getStore(), $app['files'], $app['view.finder'], $app['config']['view.dependencies']);
         });
     }
 

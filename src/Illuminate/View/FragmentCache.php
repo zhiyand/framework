@@ -43,10 +43,13 @@ class FragmentCache {
      */
     protected $touched = false;
 
-    public function __construct(Store $cache, Filesystem $files, $treePath)
+    protected $finder;
+
+    public function __construct(Store $cache, Filesystem $files, ViewFinderInterface $finder, $treePath)
     {
         $this->cache = $cache;
         $this->files = $files;
+        $this->finder = $finder;
         $this->treePath = $treePath;
 
         if( ! $files->exists($treePath)){
@@ -94,15 +97,16 @@ class FragmentCache {
      */
     public function getFragmentId($model, $view, $serial)
     {
+        $hash = basename($view, ".php");
         $parts = [
             $model->cacheKey(),
-            $view,
+            $hash,
             $this->files->lastModified($view)
         ];
 
-        foreach (Arr::get($this->tree, "$view.$serial", []) as $v) {
+        foreach (Arr::get($this->tree, "$hash.$serial", []) as $v) {
             $parts[] = $v;
-            $parts[] = $this->files->lastModified($v);
+            $parts[] = $this->files->lastModified($this->finder->find($v));
         }
 
         return sha1(join('.', $parts));
@@ -118,6 +122,8 @@ class FragmentCache {
      */
     public function addDependency($view, $serial, $dependency)
     {
+        $view = basename($view, ".php");
+
         $key = "$view.$serial";
 
         if (Arr::has($this->tree, $key)) {

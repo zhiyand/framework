@@ -623,12 +623,14 @@ test';
 @endcache
 
 @cache($user)
+    @depends("partial")
     @include("user", ["user" => $user])
 @endcache
         ';
 
         $cache->shouldReceive('addDependency')->once()->with($compiler->getCompiledPath('foo'), 0, 'bar');
         $cache->shouldReceive('addDependency')->once()->with($compiler->getCompiledPath('foo'), 0, 'zoo');
+        $cache->shouldReceive('addDependency')->once()->with($compiler->getCompiledPath('foo'), 1, 'partial');
         $cache->shouldReceive('addDependency')->once()->with($compiler->getCompiledPath('foo'), 1, 'user');
 
         $cache->shouldReceive('saveDependency')->twice();

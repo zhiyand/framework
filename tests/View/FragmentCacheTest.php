@@ -12,12 +12,12 @@ class FragmentCacheTest extends PHPUnit_Framework_TestCase
 
     public function test_it_loads_dependencies_properly()
     {
-        list($store, $files) = $this->getViewCacheArgs();
+        list($store, $files, $finder) = $this->getViewCacheArgs();
 
         $files->shouldReceive('exists')->once()->with('tree.json')->andReturn(true);
         $files->shouldReceive('get')->once()->with('tree.json')->andReturn('{"foo":["bar","baz"]}');
 
-        $cache = new FragmentCache($store, $files, 'tree.json');
+        $cache = new FragmentCache($store, $files, $finder, 'tree.json');
 
         $this->assertEquals(['foo' => ['bar', 'baz']], $cache->getTree());
     }
@@ -27,21 +27,22 @@ class FragmentCacheTest extends PHPUnit_Framework_TestCase
      */
     public function test_it_screams_if_dependencies_file_does_not_exist()
     {
-        list($store, $files) = $this->getViewCacheArgs();
+        list($store, $files, $finder) = $this->getViewCacheArgs();
 
         $files->shouldReceive('exists')->once()->with('tree.json')->andReturn(false);
-        $cache = new FragmentCache($store, $files, 'tree.json');
+        $cache = new FragmentCache($store, $files, $finder, 'tree.json');
     }
 
     public function test_it_generates_fragment_id_based_on_model_view_serial()
     {
 
-        list($store, $files) = $this->getViewCacheArgs();
+        list($store, $files, $finder) = $this->getViewCacheArgs();
 
         $files->shouldReceive('exists')->once()->with('tree.json')->andReturn(true);
         $files->shouldReceive('get')->once()->with('tree.json')->andReturn('{"view1":[["foo"],["bar"]]}');
         $files->shouldReceive('lastModified')->andReturn(100);
-        $cache = new FragmentCache($store, $files, 'tree.json');
+        $finder->shouldReceive('find')->andReturn('bar');
+        $cache = new FragmentCache($store, $files, $finder, 'tree.json');
 
         $model = m::mock('stdClass');
         $model->shouldReceive('cacheKey')->andReturn('key');
@@ -75,20 +76,21 @@ class FragmentCacheTest extends PHPUnit_Framework_TestCase
 
     protected function getFragmentCache()
     {
-        list($store, $files) = $this->getViewCacheArgs();
+        list($store, $files, $finder) = $this->getViewCacheArgs();
 
         $files->shouldReceive('exists')->once()->with('tree.json')->andReturn(true);
         $files->shouldReceive('get')->once()->with('tree.json')->andReturn('{"foo":[["bar"],["baz"]]}');
         $files->shouldReceive('lastModified')->andReturn(100);
 
-        return new FragmentCache($store, $files, 'tree.json');
+        return new FragmentCache($store, $files, $finder, 'tree.json');
     }
 
     protected function getViewCacheArgs()
     {
         return [
             m::mock('\Illuminate\Contracts\Cache\Store'),
-            m::mock('\Illuminate\Filesystem\Filesystem')
+            m::mock('\Illuminate\Filesystem\Filesystem'),
+            m::mock('\Illuminate\View\ViewFinderInterface')
         ];
     }
 }
