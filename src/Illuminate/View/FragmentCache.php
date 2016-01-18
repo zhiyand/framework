@@ -3,7 +3,7 @@
 namespace Illuminate\View;
 
 use Illuminate\Contracts\Cache\Store;
-use Illuminate\Contracts\Filesystem\Filesystem;
+use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Arr;
 
 class FragmentCache {
@@ -16,18 +16,24 @@ class FragmentCache {
     protected $cache;
 
     /**
-     * @var \Illuminate\Contracts\Filesystem\Filesystem
+     * The filesystem.
+     *
+     * @var \Illuminate\Filesystem\Filesystem
      */
     protected $files;
 
-    protected $fragmentId;
-
-    protected $fragment;
-
-    protected $started = false;
-
+    /**
+     * The dependency tree
+     *
+     * @var array
+     */
     protected $tree;
 
+    /**
+     * The path to the file holding the dependency tree
+     *
+     * @var string
+     */
     protected $treePath;
 
     /**
@@ -50,27 +56,43 @@ class FragmentCache {
         $this->tree = (array)json_decode($files->get($treePath));
     }
 
+    /**
+     * Get the dependency tree.
+     *
+     * @return array
+     */
     public function getTree()
     {
         return $this->tree;
     }
 
-    public function getFragmentId()
-    {
-        return $this->fragmentId;
-    }
-
+    /**
+     * Get the filesystem instance.
+     *
+     * @return Filesystem
+     */
     public function getFiles()
     {
         return $this->files;
     }
 
+    /**
+     * Get the cache store.
+     *
+     * @return Store
+     */
     public function getCache()
     {
         return $this->cache;
     }
 
-    public function setFragment($model, $view, $serial)
+    /**
+     * @param object $model Object responds to `cacheKey()`
+     * @param string $view  The compiled view path
+     * @param integer $serial The serial number of the fragment in $view
+     * @return string
+     */
+    public function getFragmentId($model, $view, $serial)
     {
         $parts = [
             $model->cacheKey(),
@@ -83,41 +105,17 @@ class FragmentCache {
             $parts[] = $this->files->lastModified($v);
         }
 
-        $this->fragmentId = sha1(join('.', $parts));
+        return sha1(join('.', $parts));
     }
 
 
-    public function expired()
-    {
-        $this->fragment = $this->cache->get($this->fragmentId);
-
-        return ! $this->fragment;
-    }
-
-    public function start()
-    {
-        if ($this->started) {
-            throw new \InvalidArgumentException('Cache fragment already started.');
-        }
-        $this->started = true;
-        ob_start();
-    }
-
-    public function stop()
-    {
-        if ($this->started) {
-            $this->fragment = ob_get_clean();
-
-            $this->cache->put($this->fragmentId, $this->fragment, 60);
-        }
-        $this->started = false;
-    }
-
-    public function getContent()
-    {
-        return $this->fragment;
-    }
-
+    /**
+     * Add view dependency
+     *
+     * @param string $view The compiled view path
+     * @param string $serial The serial number of the fragment
+     * @param string $dependency The partial that the $view depends on
+     */
     public function addDependency($view, $serial, $dependency)
     {
         $key = "$view.$serial";
@@ -133,6 +131,9 @@ class FragmentCache {
         $this->touched = true;
     }
 
+    /**
+     * Persist the dependency tree to filesystem
+     */
     public function saveDependency()
     {
         if ($this->touched) {

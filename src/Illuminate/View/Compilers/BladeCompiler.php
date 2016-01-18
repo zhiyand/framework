@@ -382,7 +382,11 @@ class BladeCompiler extends Compiler implements CompilerInterface
 
     protected function compileCache($expression)
     {
-        return "<?php \$__env->startFragment($expression, __FILE__, $this->fragmentCounter); ?>";
+        return "<?php \$__fragment_id = \$__env->getFragmentId($expression, __FILE__, $this->fragmentCounter);
+if(Cache::has(\$__fragment_id)):
+    echo Cache::get(\$__fragment_id);
+else:
+    ob_start(); ?>";
     }
 
     protected function compileEndCache($expression)
@@ -392,7 +396,10 @@ class BladeCompiler extends Compiler implements CompilerInterface
         }
         $this->fragmentCounter += 1;
 
-        return "<?php \$__env->stopFragment(); ?>";
+        return "<?php \$__fragment_content = ob_get_clean();
+    Cache::put(\$__fragment_id, \$__fragment_content, 60);
+    echo \$__fragment_content;
+endif; ?>";
     }
 
     /**

@@ -514,20 +514,9 @@ class Factory implements FactoryContract
         $this->events->fire('creating: '.$view->getName(), [$view]);
     }
 
-    public function startFragment($model, $view, $serial)
+    public function getFragmentId($model, $view, $serial)
     {
-        $this->cache->setFragment($model, $view, $serial);
-
-        if ($this->cache->expired()) {
-            $this->cache->start();
-        }
-    }
-
-    public function stopFragment()
-    {
-        $this->cache->stop();
-
-        echo $this->cache->getContent();
+        return $this->cache->getFragmentId($model, $view, $serial);
     }
 
     /**
@@ -850,6 +839,16 @@ class Factory implements FactoryContract
     public function setContainer(Container $container)
     {
         $this->container = $container;
+    }
+
+    public function getFragmentCache()
+    {
+        return $this->cache;
+    }
+
+    public function setFragmentCache(FragmentCache $cache)
+    {
+        $this->cache = $cache;
     }
 
     /**

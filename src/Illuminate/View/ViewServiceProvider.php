@@ -17,6 +17,8 @@ class ViewServiceProvider extends ServiceProvider
      */
     public function register()
     {
+        $this->registerFragmentCache();
+
         $this->registerEngineResolver();
 
         $this->registerViewFinder();
@@ -74,7 +76,11 @@ class ViewServiceProvider extends ServiceProvider
         $app->singleton('blade.compiler', function ($app) {
             $cache = $app['config']['view.compiled'];
 
-            return new BladeCompiler($app['files'], $cache);
+            $compiler = new BladeCompiler($app['files'], $cache);
+
+            $compiler->setFragmentCache($app['view.fragment.cache']);
+
+            return $compiler;
         });
 
         $resolver->register('blade', function () use ($app) {
@@ -93,6 +99,13 @@ class ViewServiceProvider extends ServiceProvider
             $paths = $app['config']['view.paths'];
 
             return new FileViewFinder($app['files'], $paths);
+        });
+    }
+
+    public function registerFragmentCache()
+    {
+        $this->app->bind('view.fragment.cache', function($app) {
+            return new FragmentCache($app['cache']->getStore(), $app['files'], $app['config']['view.dependencies']);
         });
     }
 
@@ -117,6 +130,8 @@ class ViewServiceProvider extends ServiceProvider
             // view composers may be classes registered in the container, which allows
             // for great testable, flexible composers for the application developer.
             $env->setContainer($app);
+
+            $env->setFragmentCache($app['view.fragment.cache']);
 
             $env->share('app', $app);
 

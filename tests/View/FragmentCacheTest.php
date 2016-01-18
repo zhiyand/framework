@@ -46,54 +46,12 @@ class FragmentCacheTest extends PHPUnit_Framework_TestCase
         $model = m::mock('stdClass');
         $model->shouldReceive('cacheKey')->andReturn('key');
 
-        $cache->setFragment($model, 'view1', 1);
-
-        $this->assertEquals(sha1('key.view1.100.bar.100'), $cache->getFragmentId());
-    }
-
-    public function test_it_detects_expiration_of_fragment_and_captures_latest_content()
-    {
-        $cache = $this->getViewCache();
-
-        $model = m::mock('stdClass');
-        $model->shouldReceive('cacheKey')->andReturn('key');
-        $model->shouldReceive('dummy');
-
-        $cache->setFragment($model, 'foo', 0);
-
-        $cache->getCache()->shouldReceive('get')->andReturn(false);
-        $cache->getCache()->shouldReceive('put')
-            ->with(sha1('key.foo.100.bar.100'), 'cool', 60)
-            ->andReturn(true);
-
-        $this->assertTrue($cache->expired());
-
-        $cache->start();
-        echo "cool";
-        $cache->stop();
-
-        $this->assertEquals('cool', $cache->getContent());
-    }
-
-    public function test_it_retrieves_cached_fragment_content()
-    {
-        $cache = $this->getViewCache();
-
-        $model = m::mock('stdClass');
-        $model->shouldReceive('cacheKey')->andReturn('key');
-
-        $cache->setFragment($model, 'foo', 0);
-
-        $cache->getCache()->shouldReceive('get')->andReturn('awesome');
-
-        $this->assertFalse($cache->expired());
-
-        $this->assertEquals('awesome', $cache->getContent());
+        $this->assertEquals(sha1('key.view1.100.bar.100'), $cache->getFragmentId($model, 'view1', 1));
     }
 
     public function test_it_can_update_view_dependencies()
     {
-        $cache = $this->getViewCache();
+        $cache = $this->getFragmentCache();
 
         $cache->addDependency('foo', 0, 'zigzag');
 
@@ -108,14 +66,14 @@ class FragmentCacheTest extends PHPUnit_Framework_TestCase
 
     public function test_it_can_save_updated_dependencies()
     {
-        $cache = $this->getViewCache();
+        $cache = $this->getFragmentCache();
 
         $cache->addDependency('foo', 0, 'zigzag');
         $cache->getFiles()->shouldReceive('put')->once();
         $cache->saveDependency();
     }
 
-    protected function getViewCache()
+    protected function getFragmentCache()
     {
         list($store, $files) = $this->getViewCacheArgs();
 
@@ -130,7 +88,7 @@ class FragmentCacheTest extends PHPUnit_Framework_TestCase
     {
         return [
             m::mock('\Illuminate\Contracts\Cache\Store'),
-            m::mock('\Illuminate\Contracts\Filesystem\Filesystem')
+            m::mock('\Illuminate\Filesystem\Filesystem')
         ];
     }
 }
